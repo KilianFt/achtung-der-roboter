@@ -1,0 +1,1 @@
+replicate the game "achtung kurve" as a gymnasium env. In this game each player moves at constant speed and can either turn a little bit to the right or to the left. They draw a line behind them where they moved. If one player collides with the other the one that runs into the other loses. There is a game score that corresponds with the time a player is alive.
