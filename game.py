@@ -106,6 +106,10 @@ class KurveEnv(gym.Env):
             self.players.append(p)
 
         self.board = np.zeros(self.board_size, dtype=np.int32)
+        self.board[0, :] = -1
+        self.board[-1, :] = -1
+        self.board[:, 0] = -1
+        self.board[:, -1] = -1
         for p in self.players:
             self.board[p.y, p.x] = p.id
         self.colors = [p.color for p in self.players]
@@ -128,10 +132,11 @@ class KurveEnv(gym.Env):
         cols = range(self.board_size[1])
         for x, y in product(rows, cols):
             pixel = self.board[y, x]
+            border = (x * self.scale, y * self.scale, self.scale, self.scale)
             if pixel > 0:
-                print(pixel)
-                border = (x * self.scale, y * self.scale, self.scale, self.scale)
                 pg.draw.rect(canvas, self.colors[pixel - 1], border)
+            elif pixel == -1:
+                pg.draw.rect(canvas, pg.Color("yellow"), border)
 
         self.window.blit(canvas, canvas.get_rect())
         pg.event.pump()
