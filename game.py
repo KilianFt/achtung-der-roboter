@@ -96,11 +96,16 @@ class KurveEnv(gym.Env):
         return self.board, reward, terminated, {}
 
     def reset(self):
-        self.players = []
-        initial_pos = np.random.randint(0, self.board_size[0], size=(self.n_players, 2))
+        init_x_min = np.ceil(0.1 * self.board_size[0])
+        init_x_max = np.floor(0.9 * self.board_size[0])
+        init_x = np.random.randint(init_x_min, init_x_max, size=(self.n_players, 1))
+        init_y_min = np.ceil(0.1 * self.board_size[1])
+        init_y_max = np.floor(0.9 * self.board_size[1])
+        init_y = np.random.randint(init_y_min, init_y_max, size=(self.n_players, 1))
+        init_pos = np.column_stack([init_x, init_y])
         colors = [pg.Color("red"), pg.Color("green")]
         for i in range(self.n_players):
-            x, y = initial_pos[i]
+            x, y = init_pos[i]
             p = Player(i + 1, x, y, self.speed, self.angular_speed)
             p.color = colors[i]
             self.players.append(p)
@@ -112,7 +117,6 @@ class KurveEnv(gym.Env):
         self.board[:, -1] = -1
         for p in self.players:
             self.board[p.y, p.x] = p.id
-        self.colors = [p.color for p in self.players]
 
         return self.board
 
@@ -128,9 +132,7 @@ class KurveEnv(gym.Env):
         canvas = pg.Surface(window_size)
         canvas.fill(pg.Color("black"))
 
-        rows = range(self.board_size[0])
-        cols = range(self.board_size[1])
-        for x, y in product(rows, cols):
+        for x, y in product(*map(range, self.board_size)):
             pixel = self.board[y, x]
             border = (x * self.scale, y * self.scale, self.scale, self.scale)
             if pixel > 0:
