@@ -4,9 +4,10 @@ from pydantic import BaseModel
 
 
 class BaseConfig(BaseModel):
-    speed: float = 1
+    speed: float = 5
     angular_speed: float = 0.2
-    board_size: List[int] = [100, 100]
+    board_size: List[int] = [1000, 1000]
     n_players: int = 2
-    scale: int = 10
+    scale: int = 1
     fps: int = 5
+    player_radius: int = 10

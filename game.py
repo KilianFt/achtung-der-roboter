@@ -16,7 +16,7 @@ class Action(Enum):
 
 
 class Player:
-    def __init__(self, id, x, y, speed, angular_speed):
+    def __init__(self, id, x, y, speed, angular_speed, radius):
         self.id = id
         self.color = pg.Color(
             np.random.randint(low=0, high=255),
@@ -25,6 +25,7 @@ class Player:
         )
         self.x = x
         self.y = y
+        self.radius = radius
         self.direction = np.random.rand() * 2 * np.pi
         self.speed = speed
         self.angular_speed = angular_speed
@@ -46,6 +47,13 @@ class Player:
     def to_grid(self):
         return int(self.x), int(self.y)
 
+    def area(self):
+        area = set()
+        for x, y in product(range(self.radius), repeat=2):
+            if x**2 + y**2 <= self.radius**2:
+                area.add((int(self.x + x), int(self.y + y)))
+        return area
+
 
 class KurveEnv(gym.Env):
     def __init__(
@@ -56,6 +64,7 @@ class KurveEnv(gym.Env):
         angular_speed: float,
         scale: int,
         fps: int,
+        player_radius: int,
         render_mode: str = "human",
     ):
         super(KurveEnv, self).__init__()
@@ -68,9 +77,11 @@ class KurveEnv(gym.Env):
         self.render_mode = render_mode
         self.scale = scale
         self.fps = fps
+        self.player_radius = player_radius
 
         self.window = None
         self.clock = None
+        self.updated_pixels = set()
 
         self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Box(
@@ -85,11 +96,15 @@ class KurveEnv(gym.Env):
             p.move(a)
 
         for p in self.players:
-            x, y = p.to_grid()
-            if self.board[y, x] not in (0, p.id):
+            area = p.area()
+            print(area)
+            pixels = [self.board[y, x] for x, y in area]
+            if any([x not in (0, p.id) for x in pixels]):
                 p.alive = False
             else:
-                self.board[y, x] = p.id
+                self.updated_pixels.union(area)
+                for x, y in area:
+                    self.board[y, x] = p.id
 
         reward = 0
         terminated = not any([p.alive for p in self.players])
@@ -106,7 +121,7 @@ class KurveEnv(gym.Env):
         colors = [pg.Color("red"), pg.Color("green")]
         for i in range(self.n_players):
             x, y = init_pos[i]
-            p = Player(i + 1, x, y, self.speed, self.angular_speed)
+            p = Player(i + 1, x, y, self.speed, self.angular_speed, self.player_radius)
             p.color = colors[i]
             self.players.append(p)
 
@@ -117,6 +132,7 @@ class KurveEnv(gym.Env):
         self.board[:, -1] = -1
         for p in self.players:
             self.board[p.y, p.x] = p.id
+        self.colors = [p.color for p in self.players]
 
         return self.board
 
@@ -132,7 +148,7 @@ class KurveEnv(gym.Env):
         canvas = pg.Surface(window_size)
         canvas.fill(pg.Color("black"))
 
-        for x, y in product(*map(range, self.board_size)):
+        for x, y in self.updated_pixels:
             pixel = self.board[y, x]
             border = (x * self.scale, y * self.scale, self.scale, self.scale)
             if pixel > 0:
@@ -140,6 +156,14 @@ class KurveEnv(gym.Env):
             elif pixel == -1:
                 pg.draw.rect(canvas, pg.Color("yellow"), border)
 
+        for p in self.players:
+            if p.alive:
+                pg.draw.circle(
+                    canvas,
+                    p.color,
+                    (p.x * self.scale, p.y * self.scale),
+                    self.player_radius,
+                )
         self.window.blit(canvas, canvas.get_rect())
         pg.event.pump()
         pg.display.update()
@@ -161,6 +185,7 @@ def main():
         render_mode="human",
         scale=config.scale,
         fps=config.fps,
+        player_radius=config.player_radius,
     )
 
     observation = env.reset()
